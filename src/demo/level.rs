@@ -18,6 +18,8 @@ pub(super) fn plugin(app: &mut App) {
 pub struct LevelAssets {
     #[dependency]
     music: Handle<AudioSource>,
+    #[dependency]
+    background: Handle<Image>,
 }
 
 impl FromWorld for LevelAssets {
@@ -25,8 +27,16 @@ impl FromWorld for LevelAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             music: assets.load("audio/music/Fluffing A Duck.ogg"),
+            background: assets.load("images/splash.png"),
         }
     }
+}
+
+pub fn background_bundle(level_assets: Res<LevelAssets>) -> impl Bundle {
+    (
+        Sprite::from_image(level_assets.background.clone()),
+        Transform::from_scale(Vec2::splat(1.0).extend(1.0)),
+    )
 }
 
 /// A system that spawns the main level.
@@ -46,7 +56,8 @@ pub fn spawn_level(
             (
                 Name::new("Gameplay Music"),
                 music(level_assets.music.clone())
-            )
+            ),
+            background_bundle(level_assets)
         ],
     ));
 }
