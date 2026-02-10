@@ -36,6 +36,7 @@ pub fn background_bundle(level_assets: Res<LevelAssets>) -> impl Bundle {
     (
         Sprite::from_image(level_assets.background.clone()),
         Transform::from_scale(Vec2::splat(1.0).extend(1.0)),
+        ZIndex(-1),
     )
 }
 
