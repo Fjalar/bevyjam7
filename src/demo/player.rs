@@ -48,7 +48,7 @@ pub fn player(
                 index: player_animation.get_atlas_index(),
             },
         ),
-        Transform::from_scale(Vec2::splat(8.0).extend(1.0)),
+        Transform::from_scale(Vec2::splat(1.0).extend(1.0)),
         MovementController {
             max_speed,
             ..default()
