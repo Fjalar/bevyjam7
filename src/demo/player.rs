@@ -10,6 +10,7 @@ use crate::{
     asset_tracking::LoadResource,
     demo::{
         animation::PlayerAnimation,
+        gun::{GunAssets, gun_bundle},
         movement::{MovementController, ScreenWrap},
     },
 };
@@ -30,6 +31,7 @@ pub(super) fn plugin(app: &mut App) {
 pub fn player(
     max_speed: f32,
     player_assets: &PlayerAssets,
+    gun_assets: &GunAssets,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> impl Bundle {
     // A texture atlas is a way to split a single image into a grid of related images.
@@ -55,6 +57,7 @@ pub fn player(
         },
         ScreenWrap,
         player_animation,
+        children![gun_bundle(gun_assets)],
     )
 }
 
