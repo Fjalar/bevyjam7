@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::image::{ImageLoaderSettings, ImageSampler};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -12,6 +14,9 @@ pub(super) fn plugin(app: &mut App) {
         (
             update_gun.in_set(PausableSystems),
             shoot_gun
+                .in_set(AppSystems::RecordInput)
+                .in_set(PausableSystems),
+            reload_gun
                 .in_set(AppSystems::RecordInput)
                 .in_set(PausableSystems),
         ),
@@ -56,8 +61,9 @@ pub fn gun_bundle(gun_assets: &GunAssets) -> impl Bundle {
     (
         Sprite::from_image(gun_assets.gun.clone()),
         Gun {
-            shoot_timer: timer,
-            angle: 0.0,
+            ammo: 7,
+            max_ammo: 7,
+            ..Default::default()
         },
         Transform::from_xyz(32.0, 0.0, 0.0),
     )
@@ -65,8 +71,18 @@ pub fn gun_bundle(gun_assets: &GunAssets) -> impl Bundle {
 
 #[derive(Component, Default)]
 struct Gun {
-    shoot_timer: Timer,
+    state: GunState,
+    ammo: u32,
+    max_ammo: u32,
     angle: f32,
+}
+
+#[derive(Default, PartialEq, Eq)]
+enum GunState {
+    #[default]
+    Ready,
+    Shooting(Timer),
+    Reloading(Timer),
 }
 
 fn update_gun(
@@ -74,8 +90,26 @@ fn update_gun(
     window: Single<&Window, With<PrimaryWindow>>,
     time: Res<Time>,
 ) {
-    gun.0.shoot_timer.tick(time.delta());
-    let time_remaining = gun.0.shoot_timer.remaining_secs();
+    let mut extra_rotation = 0.0;
+    match &mut gun.0.state {
+        GunState::Shooting(timer) => {
+            timer.tick(time.delta());
+            extra_rotation = timer.remaining_secs();
+            if timer.is_finished() {
+                gun.0.state = GunState::Ready;
+            }
+        }
+        GunState::Reloading(timer) => {
+            timer.tick(time.delta());
+            extra_rotation = timer.remaining_secs() * PI;
+            if timer.is_finished() {
+                gun.0.state = GunState::Ready;
+                gun.0.ammo = gun.0.max_ammo;
+            }
+        }
+        GunState::Ready => (),
+    }
+
     if let Some(position) = window.cursor_position() {
         let mouse_vector = position - Vec2::new(window.width() / 2.0, window.height() / 2.0);
         let angle = Vec2::new(mouse_vector.x, -mouse_vector.y).to_angle();
@@ -86,10 +120,10 @@ fn update_gun(
             .rotate_around(Vec3::ZERO, Quat::from_rotation_z(angle));
         if mouse_vector.x.is_sign_positive() {
             gun.2.flip_y = false;
-            gun.1.rotate_z(time_remaining);
+            gun.1.rotate_z(extra_rotation);
         } else {
             gun.2.flip_y = true;
-            gun.1.rotate_z(-time_remaining);
+            gun.1.rotate_z(-extra_rotation);
         }
     }
 }
@@ -100,13 +134,20 @@ fn shoot_gun(
     gun_assets: Res<GunAssets>,
     mut gun: Single<(&GlobalTransform, &mut Gun)>,
 ) {
-    if mouse.pressed(MouseButton::Left) && gun.1.shoot_timer.is_finished() {
+    if mouse.pressed(MouseButton::Left) && gun.1.state == GunState::Ready && gun.1.ammo > 0 {
         commands.spawn(bullet_bundle(
             &gun_assets,
             Transform::from_translation(gun.0.translation()).with_rotation(gun.0.rotation()),
             Vec2::from_angle(gun.1.angle) * 320.0,
         ));
-        gun.1.shoot_timer.reset();
+        gun.1.state = GunState::Shooting(Timer::from_seconds(0.5, TimerMode::Once));
+        gun.1.ammo -= 1;
+    }
+}
+
+fn reload_gun(key: Res<ButtonInput<KeyCode>>, mut gun: Single<&mut Gun>) {
+    if key.pressed(KeyCode::KeyR) && gun.state == GunState::Ready && gun.ammo < gun.max_ammo {
+        gun.state = GunState::Reloading(Timer::from_seconds(2.0, TimerMode::Once));
     }
 }
 
