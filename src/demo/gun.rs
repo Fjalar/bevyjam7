@@ -51,22 +51,31 @@ impl FromWorld for GunAssets {
 }
 
 pub fn gun_bundle(gun_assets: &GunAssets) -> impl Bundle {
+    let mut timer = Timer::from_seconds(1.0 / 3.0, TimerMode::Once);
+    timer.finish();
     (
         Sprite::from_image(gun_assets.gun.clone()),
-        Gun::default(),
+        Gun {
+            shoot_timer: timer,
+            angle: 0.0,
+        },
         Transform::from_xyz(32.0, 0.0, 0.0),
     )
 }
 
 #[derive(Component, Default)]
 struct Gun {
+    shoot_timer: Timer,
     angle: f32,
 }
 
 fn update_gun(
     mut gun: Single<(&mut Gun, &mut Transform, &mut Sprite)>,
     window: Single<&Window, With<PrimaryWindow>>,
+    time: Res<Time>,
 ) {
+    gun.0.shoot_timer.tick(time.delta());
+    let time_remaining = gun.0.shoot_timer.remaining_secs();
     if let Some(position) = window.cursor_position() {
         let mouse_vector = position - Vec2::new(window.width() / 2.0, window.height() / 2.0);
         let angle = Vec2::new(mouse_vector.x, -mouse_vector.y).to_angle();
@@ -75,7 +84,13 @@ fn update_gun(
         gun.1.rotation = Quat::default();
         gun.1
             .rotate_around(Vec3::ZERO, Quat::from_rotation_z(angle));
-        gun.2.flip_y = mouse_vector.x.is_sign_negative();
+        if mouse_vector.x.is_sign_positive() {
+            gun.2.flip_y = false;
+            gun.1.rotate_z(time_remaining);
+        } else {
+            gun.2.flip_y = true;
+            gun.1.rotate_z(-time_remaining);
+        }
     }
 }
 
@@ -83,14 +98,15 @@ fn shoot_gun(
     mut commands: Commands,
     mouse: Res<ButtonInput<MouseButton>>,
     gun_assets: Res<GunAssets>,
-    gun: Single<(&GlobalTransform, &Gun)>,
+    mut gun: Single<(&GlobalTransform, &mut Gun)>,
 ) {
-    if mouse.just_pressed(MouseButton::Left) {
+    if mouse.pressed(MouseButton::Left) && gun.1.shoot_timer.is_finished() {
         commands.spawn(bullet_bundle(
             &gun_assets,
             Transform::from_translation(gun.0.translation()).with_rotation(gun.0.rotation()),
             Vec2::from_angle(gun.1.angle) * 320.0,
         ));
+        gun.1.shoot_timer.reset();
     }
 }
 
