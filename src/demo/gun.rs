@@ -131,7 +131,7 @@ fn update_gun(
 fn shoot_gun(
     mut commands: Commands,
     mouse: Res<ButtonInput<MouseButton>>,
-    gun_assets: Res<GunAssets>,
+    gun_assets: If<Res<GunAssets>>,
     mut gun: Single<(&GlobalTransform, &mut Gun)>,
 ) {
     if mouse.pressed(MouseButton::Left) && gun.1.state == GunState::Ready && gun.1.ammo > 0 {
