@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{AppSystems, PausableSystems, demo::player::Player};
+use crate::{AppSystems, PausableSystems, gameplay::player::Player};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(

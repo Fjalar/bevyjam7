@@ -8,7 +8,7 @@ use bevy::{
 use crate::{
     AppSystems, PausableSystems,
     asset_tracking::LoadResource,
-    demo::{
+    gameplay::{
         animation::PlayerAnimation,
         gun::{GunAssets, gun_bundle},
         movement::{MovementController, ScreenWrap},
