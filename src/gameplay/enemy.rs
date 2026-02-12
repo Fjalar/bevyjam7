@@ -56,7 +56,7 @@ impl FromWorld for EnemyAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             image: assets.load_with_settings(
-                "images/cube.png",
+                "images/tetra.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -82,8 +82,7 @@ fn enemy(
     location: Vec2,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> impl Bundle {
-    let layout =
-        TextureAtlasLayout::from_grid(UVec2::splat(31), 12, 1, Some(UVec2::splat(1)), None);
+    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 12, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     let enemy_animation = EnemyAnimation::new();
 
