@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
+use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, gameplay::player::Player};
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<EnemyAssets>();
@@ -24,6 +24,8 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(PausableSystems)
             .in_set(AppSystems::RecordInput),
     );
+
+    app.add_systems(Update, follow_player);
 }
 
 #[derive(Component, Reflect, Debug)]
@@ -44,7 +46,7 @@ impl Default for Enemy {
     fn default() -> Self {
         Self {
             health: 20.0,
-            speed: 10.0,
+            speed: 30.0,
         }
     }
 }
@@ -145,5 +147,19 @@ fn update_enemy_atlas(mut query: Query<(&EnemyAnimation, &mut Sprite)>) {
 fn update_enemy_animation_timer(time: Res<Time>, mut query: Query<&mut EnemyAnimation>) {
     for mut animation in &mut query {
         animation.update_timer(time.delta());
+    }
+}
+
+fn follow_player(
+    enemies: Query<(&mut Transform, &Enemy), Without<Player>>,
+    player: Single<&Transform, (With<Player>, Without<Enemy>)>,
+    time: Res<Time>,
+) {
+    for (mut transform, enemy) in enemies {
+        let toward_player = (player.translation.xy() - transform.translation.xy()).normalize()
+            * enemy.speed
+            * time.delta_secs();
+
+        transform.translation += toward_player.extend(0.0);
     }
 }
