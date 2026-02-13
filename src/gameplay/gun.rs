@@ -1,9 +1,11 @@
 use std::f32::consts::PI;
 
+use avian2d::prelude::{Collider, LinearVelocity, LockedAxes, RigidBody};
 use bevy::image::{ImageLoaderSettings, ImageSampler};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::gameplay::level::Level;
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
 
 pub(super) fn plugin(app: &mut App) {
@@ -20,8 +22,8 @@ pub(super) fn plugin(app: &mut App) {
                 .in_set(AppSystems::RecordInput)
                 .in_set(PausableSystems),
         ),
-    )
-    .add_systems(FixedUpdate, update_bullet);
+    );
+    // .add_systems(FixedUpdate, update_bullet);
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -114,7 +116,7 @@ fn update_gun(
         let mouse_vector = position - Vec2::new(window.width() / 2.0, window.height() / 2.0);
         let angle = Vec2::new(mouse_vector.x, -mouse_vector.y).to_angle();
         gun.0.angle = angle;
-        gun.1.translation = Vec3::X * 32.0;
+        gun.1.translation = (Vec2::X * 32.0).extend(0.0);
         gun.1.rotation = Quat::default();
         gun.1
             .rotate_around(Vec3::ZERO, Quat::from_rotation_z(angle));
@@ -132,16 +134,24 @@ fn shoot_gun(
     mut commands: Commands,
     mouse: Res<ButtonInput<MouseButton>>,
     gun_assets: If<Res<GunAssets>>,
-    mut gun: Single<(&GlobalTransform, &mut Gun)>,
+    gun_query: Query<(&GlobalTransform, &mut Gun)>,
+    level: Single<Entity, With<Level>>,
 ) {
-    if mouse.pressed(MouseButton::Left) && gun.1.state == GunState::Ready && gun.1.ammo > 0 {
-        commands.spawn(bullet_bundle(
-            &gun_assets,
-            Transform::from_translation(gun.0.translation()).with_rotation(gun.0.rotation()),
-            Vec2::from_angle(gun.1.angle) * 320.0,
-        ));
-        gun.1.state = GunState::Shooting(Timer::from_seconds(0.5, TimerMode::Once));
-        gun.1.ammo -= 1;
+    for (transform, mut gun) in gun_query {
+        if mouse.pressed(MouseButton::Left) && gun.state == GunState::Ready && gun.ammo > 0 {
+            let bullet = commands
+                .spawn(bullet_bundle(
+                    &gun_assets,
+                    Transform::from_translation(transform.translation())
+                        .with_rotation(transform.rotation()),
+                    Vec2::from_angle(gun.angle) * 320.0,
+                ))
+                .id();
+            commands.entity(*level).add_child(bullet);
+
+            gun.state = GunState::Shooting(Timer::from_seconds(0.5, TimerMode::Once));
+            gun.ammo -= 1;
+        }
     }
 }
 
@@ -152,20 +162,16 @@ fn reload_gun(key: Res<ButtonInput<KeyCode>>, mut gun: Single<&mut Gun>) {
 }
 
 #[derive(Component)]
-struct Bullet {
-    velocity: Vec2,
-}
+struct Bullet;
 
 fn bullet_bundle(gun_assets: &GunAssets, transform: Transform, velocity: Vec2) -> impl Bundle {
     (
         Sprite::from_image(gun_assets.bullet.clone()),
-        Bullet { velocity },
+        Bullet,
+        LockedAxes::ROTATION_LOCKED,
+        LinearVelocity(velocity),
         transform,
+        Collider::circle(8.0),
+        RigidBody::Dynamic,
     )
-}
-
-fn update_bullet(bullets: Query<(&mut Transform, &Bullet)>, time: Res<Time>) {
-    for (mut transform, bullet) in bullets {
-        transform.translation += bullet.velocity.extend(0.0) * time.delta_secs()
-    }
 }

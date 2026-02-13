@@ -1,11 +1,16 @@
 use std::time::Duration;
 
+use avian2d::prelude::{Collider, LinearVelocity, LockedAxes, Physics, RigidBody};
 use bevy::{
     image::{ImageLoaderSettings, ImageSampler},
     prelude::*,
 };
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, gameplay::player::Player};
+use crate::{
+    AppSystems, PausableSystems,
+    asset_tracking::LoadResource,
+    gameplay::{level::Level, player::Player},
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<EnemyAssets>();
@@ -46,7 +51,7 @@ impl Default for Enemy {
     fn default() -> Self {
         Self {
             health: 20.0,
-            speed: 30.0,
+            speed: 300.0,
         }
     }
 }
@@ -71,9 +76,13 @@ fn spawn_enemy_on_spacebar(
     input: Res<ButtonInput<KeyCode>>,
     enemy_assets: If<Res<EnemyAssets>>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    level: Single<Entity, With<Level>>,
 ) {
     if input.just_pressed(KeyCode::Space) {
-        commands.spawn(enemy(&enemy_assets, Vec2::ZERO, &mut texture_atlas_layouts));
+        let enemy = commands
+            .spawn(enemy(&enemy_assets, Vec2::ZERO, &mut texture_atlas_layouts))
+            .id();
+        commands.entity(*level).add_child(enemy);
     }
 }
 
@@ -98,6 +107,9 @@ fn enemy(
         ),
         Transform::from_scale(Vec2::splat(1.0).extend(1.0)).with_translation(location.extend(0.0)),
         enemy_animation,
+        Collider::circle(8.0),
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
     )
 }
 
@@ -150,15 +162,15 @@ fn update_enemy_animation_timer(time: Res<Time>, mut query: Query<&mut EnemyAnim
 }
 
 fn follow_player(
-    enemies: Query<(&mut Transform, &Enemy), Without<Player>>,
+    enemies: Query<(&mut LinearVelocity, &Transform, &Enemy), Without<Player>>,
     player: Single<&Transform, (With<Player>, Without<Enemy>)>,
-    time: Res<Time>,
+    time: Res<Time<Physics>>,
 ) {
-    for (mut transform, enemy) in enemies {
+    for (mut velocity, transform, enemy) in enemies {
         let toward_player = (player.translation.xy() - transform.translation.xy()).normalize()
             * enemy.speed
             * time.delta_secs();
 
-        transform.translation += toward_player.extend(0.0);
+        velocity.0 += toward_player;
     }
 }

@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+avian2d = "0.5.0"
 # Use only features needed for a 2D game for faster compiles and smaller size
 bevy = { version = "0.18", default-features = false, features = ["2d"] }
 rand = "0.9"

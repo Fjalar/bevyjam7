@@ -42,6 +42,9 @@ pub fn background_bundle(level_assets: Res<LevelAssets>) -> impl Bundle {
     )
 }
 
+#[derive(Component)]
+pub struct Level;
+
 /// A system that spawns the main level.
 pub fn spawn_level(
     mut commands: Commands,
@@ -52,6 +55,7 @@ pub fn spawn_level(
 ) {
     commands.spawn((
         Name::new("Level"),
+        Level,
         Transform::default(),
         Visibility::default(),
         DespawnOnExit(Screen::Gameplay),

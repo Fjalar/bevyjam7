@@ -12,6 +12,7 @@ mod menus;
 mod screens;
 mod theme;
 
+use avian2d::prelude::*;
 use bevy::{asset::AssetMetaCheck, prelude::*};
 
 fn main() -> AppExit {
@@ -53,7 +54,10 @@ impl Plugin for AppPlugin {
             menus::plugin,
             screens::plugin,
             theme::plugin,
+            PhysicsPlugins::default(),
         ));
+
+        app.insert_resource(Gravity::ZERO);
 
         // Order new `AppSystems` variants by adding them here:
         app.configure_sets(
